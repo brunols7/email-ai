@@ -2,10 +2,13 @@ from fastapi import APIRouter, Request, Form, Depends, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
+from typing import List
+
 from app.models.category import Category
 from app.models.email import Email
 from app.db import engine
 from app.email_routes import process_emails_task
+from app.gmail import get_gmail_service, batch_delete_emails
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -28,9 +31,7 @@ def list_categories(
     ).all()
 
     return templates.TemplateResponse("categories.html", {
-        "request": request,
-        "categories": categories,
-        "user": user
+        "request": request, "categories": categories, "user": user
     })
 
 @router.post("/categories")
@@ -52,7 +53,7 @@ def create_category(
 
     background_tasks.add_task(process_emails_task, user, token_data)
 
-    return RedirectResponse(url="/categories", status_code=303)
+    return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/categories/{category_id}")
 def get_category_details(request: Request, category_id: str, session: Session = Depends(get_session)):
@@ -65,7 +66,30 @@ def get_category_details(request: Request, category_id: str, session: Session = 
         return RedirectResponse(url="/categories")
 
     return templates.TemplateResponse("category_detail.html", {
-        "request": request,
-        "category": category,
-        "user": user
+        "request": request, "category": category, "user": user
     })
+
+@router.post("/categories/{category_id}/batch-action")
+def handle_batch_action(
+    request: Request,
+    category_id: str,
+    email_ids: List[str] = Form(...),
+    session: Session = Depends(get_session)
+):
+    user = request.session.get("user")
+    token_data = request.session.get("token")
+    if not user or not token_data:
+        return RedirectResponse(url="/")
+
+    service = get_gmail_service(token_data)
+    batch_delete_emails(service, email_ids)
+
+    for email_id in email_ids:
+        email_to_delete = session.get(Email, email_id)
+        if email_to_delete and email_to_delete.user_email == user['email']:
+            session.delete(email_to_delete)
+    
+    session.commit()
+    print(f"{len(email_ids)} emails successfully deleted from the local database.")
+
+    return RedirectResponse(url=f"/categories/{category_id}", status_code=303)

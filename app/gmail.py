@@ -80,3 +80,12 @@ def archive_email(service, msg_id: str, user_id="me"):
         print(f"E-mail {msg_id} arquivado com sucesso.")
     except HttpError as e:
         print(f"Erro ao arquivar e-mail {msg_id}: {e}")
+
+def batch_delete_emails(service, email_ids: List[str], user_id="me"):
+    if not email_ids:
+        return
+    try:
+        body = {"ids": email_ids}
+        service.users().messages().batchDelete(userId=user_id, body=body).execute()
+    except HttpError as e:
+        print(f"Error deleting emails: {e}")

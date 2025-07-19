@@ -1,6 +1,5 @@
-# app/email_routes.py
 from fastapi import APIRouter, Request, Depends, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
@@ -74,10 +73,9 @@ def process_emails_task(user: dict, token_data: dict):
 
 
 @router.get("/process-emails")
-def process_emails_route(
+def trigger_manual_process(
     request: Request,
-    background_tasks: BackgroundTasks,
-    session: Session = Depends(get_session)
+    background_tasks: BackgroundTasks
 ):
     user = request.session.get("user")
     token_data = request.session.get("token")
@@ -85,5 +83,14 @@ def process_emails_route(
         return RedirectResponse(url="/")
 
     background_tasks.add_task(process_emails_task, user, token_data)
+    
+    return RedirectResponse(url="/processing", status_code=303)
 
-    return RedirectResponse(url="/dashboard")
+@router.get("/processing", response_class=HTMLResponse)
+def processing_page(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/")
+    return templates.TemplateResponse("processing.html", {"request": request, "user": user})
+
+    

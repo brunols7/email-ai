@@ -9,20 +9,32 @@
     <p><i>{{ category.description }}</i></p>
     <hr />
 
-    {% if category.emails %}
-        <ul>
-        {% for email in category.emails %}
-            <li>
-                <p><strong>From:</strong> {{ email.from_address }}</p>
-                <p><strong>Summary:</strong> {{ email.summary }}</p>
-                <p><small><i>Snippet: {{ email.snippet }}</i></small></p>
-            </li>
-            <hr />
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No emails have been classified in this category yet.</p>
-    {% endif %}
+    <form action="/categories/{{ category.id }}/batch-action" method="post">
+        
+        <button type="submit" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 15px;">
+            Delete Selected
+        </button>
+
+        {% if category.emails %}
+            <ul>
+            {% for email in category.emails %}
+                <li style="list-style-type: none; margin-bottom: 15px;">
+                    <input type="checkbox" name="email_ids" value="{{ email.id }}" style="margin-right: 10px;">
+                    
+                    <span>
+                        <p><strong>From:</strong> {{ email.from_address }}</p>
+                        <p><strong>Summary:</strong> {{ email.summary }}</p>
+                        <p><small><i>Snippet: {{ email.snippet }}</i></small></p>
+                    </span>
+                </li>
+                <hr />
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No emails have been classified in this category yet.</p>
+        {% endif %}
+    
+    </form>
     
     <br>
     <a href="/categories">View all categories</a>
