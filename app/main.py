@@ -1,18 +1,37 @@
+import os
+from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+
+load_dotenv(encoding='utf-8')
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from app import auth
-from app import gmail_routes
+from app.db import create_db_and_tables
+from app import auth, category_routes, email_routes
 
-app = FastAPI()
 
-app.add_middleware(SessionMiddleware, secret_key="supersecret")
-app.include_router(auth.router)
-app.include_router(gmail_routes.router)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY was not set in the environment variables")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting the application...")
+    create_db_and_tables()
+    yield
+    print("Finishing application...")
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.include_router(auth.router)
+app.include_router(category_routes.router)
+app.include_router(email_routes.router)
+
 templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", response_class=HTMLResponse)

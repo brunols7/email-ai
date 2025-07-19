@@ -1,15 +1,22 @@
-<h1>Minhas Categorias</h1>
+<h1>My Categories</h1>
+<p>Create categories for the AI to organize your emails.</p>
 
 <form method="post" action="/categories">
-    <input name="name" placeholder="Nome da categoria" required />
-    <input name="description" placeholder="Descrição" />
-    <button type="submit">Criar</button>
+    <input name="name" placeholder="Category name" required />
+    <input name="description" placeholder="Description (helps AI classify better)" />
+    <button type="submit">Create Category</button>
 </form>
 
+<hr>
+
+<h2>Existing Categories</h2>
 <ul>
     {% for cat in categories %}
-        <li><strong>{{ cat.name }}</strong>: {{ cat.description }}</li>
+        <li>
+            <strong><a href="/categories/{{ cat.id }}">{{ cat.name }}</a></strong>: {{ cat.description or 'No description' }}
+        </li>
     {% endfor %}
 </ul>
 
-<a href="/emails">Voltar para e-mails</a>
+<br>
+<a href="/dashboard">Back to Dashboard</a>

@@ -1,27 +1,31 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.models.category import Category
+from app.models.email import Email
 from app.db import engine
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+def get_session():
+    with Session(engine) as session:
+        yield session
+
 @router.get("/categories")
-def list_categories(request: Request):
+def list_categories(request: Request, session: Session = Depends(get_session)):
     user = request.session.get("user")
     if not user:
         return RedirectResponse(url="/")
 
-    with Session(engine) as session:
-        results = session.exec(
-            select(Category).where(Category.user_email == user["email"])
-        ).all()
+    categories = session.exec(
+        select(Category).where(Category.user_email == user["email"])
+    ).all()
 
     return templates.TemplateResponse("categories.html", {
         "request": request,
-        "categories": results,
+        "categories": categories,
         "user": user
     })
 
@@ -29,15 +33,31 @@ def list_categories(request: Request):
 def create_category(
     request: Request,
     name: str = Form(...),
-    description: str = Form("")
+    description: str = Form(""),
+    session: Session = Depends(get_session)
 ):
     user = request.session.get("user")
     if not user:
         return RedirectResponse(url="/")
 
     new_cat = Category(name=name, description=description, user_email=user["email"])
-    with Session(engine) as session:
-        session.add(new_cat)
-        session.commit()
+    session.add(new_cat)
+    session.commit()
 
     return RedirectResponse(url="/categories", status_code=303)
+
+@router.get("/categories/{category_id}")
+def get_category_details(request: Request, category_id: str, session: Session = Depends(get_session)):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/")
+
+    category = session.get(Category, category_id)
+    if not category or category.user_email != user['email']:
+        return RedirectResponse(url="/categories")
+
+    return templates.TemplateResponse("category_detail.html", {
+        "request": request,
+        "category": category,
+        "user": user
+    })
