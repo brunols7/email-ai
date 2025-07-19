@@ -1,0 +1,15 @@
+<h1>Minhas Categorias</h1>
+
+<form method="post" action="/categories">
+    <input name="name" placeholder="Nome da categoria" required />
+    <input name="description" placeholder="Descrição" />
+    <button type="submit">Criar</button>
+</form>
+
+<ul>
+    {% for cat in categories %}
+        <li><strong>{{ cat.name }}</strong>: {{ cat.description }}</li>
+    {% endfor %}
+</ul>
+
+<a href="/emails">Voltar para e-mails</a>

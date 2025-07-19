@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email AI</title>
+    <meta charset="UTF-8" lang="en">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>Welcome to Email AI</h1>
+
+    {% if user %}
+        <p>Hello, {{ user.name }} ({{ user.email }})</p>
+        <a href="/dashboard">Go to Dashboard</a><br>
+        <a href="/logout">Logout</a>
+    {% else %}
+        <a href="/login">Login with Google</a>
+    {% endif %}
+</body>
+</html>
