@@ -41,12 +41,10 @@ Respond ONLY with a valid JSON object in the following format, with no other tex
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Generate the content
         response = model.generate_content(prompt)
         
         cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
         
-        # Parse the JSON
         return json.loads(cleaned_response)
 
     except Exception as e:

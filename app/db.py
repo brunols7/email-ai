@@ -1,4 +1,3 @@
-# app/db.py (MODIFICADO)
 import os
 from sqlmodel import create_engine, SQLModel
 from dotenv import load_dotenv
