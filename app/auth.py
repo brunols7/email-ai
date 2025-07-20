@@ -74,12 +74,17 @@ async def auth_callback(
             "name": user_info.get("name"),
             "picture": user_info.get("picture"),
         }
+        
+        new_refresh_token = token.get("refresh_token")
+        
+        old_token_data = request.session.get("token", {})
+        
         token_session_data = {
             "access_token": token["access_token"],
-            "refresh_token": token.get("refresh_token"),
             "expires_at": token.get("expires_at"),
             "client_id": config("GOOGLE_CLIENT_ID"),
-            "client_secret": config("GOOGLE_CLIENT_SECRET")
+            "client_secret": config("GOOGLE_CLIENT_SECRET"),
+            "refresh_token": new_refresh_token or old_token_data.get("refresh_token")
         }
 
         request.session["user"] = user_session_data
@@ -90,6 +95,7 @@ async def auth_callback(
         ).first()
 
         if not existing_categories:
+            print(f"New user detected: {user_email}. Creating default categories.")
             for cat_data in DEFAULT_CATEGORIES:
                 new_cat = Category(
                     name=cat_data["name"],
@@ -99,6 +105,7 @@ async def auth_callback(
                 session.add(new_cat)
             session.commit()
             
+            print(f"Running initial email sync for new user {user_email}")
             background_tasks.add_task(process_emails_task, user_session_data, token_session_data)
 
         return RedirectResponse(url="/dashboard")

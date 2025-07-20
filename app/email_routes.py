@@ -18,40 +18,32 @@ def get_session():
         yield session
 
 def process_emails_task(user: dict, token_data: dict):
+    print(f"Starting email processing task for {user['email']}")
     with Session(engine) as session:
-        user_categories = session.exec(
-            select(Category).where(Category.user_email == user["email"])
-        ).all()
-        
+        user_categories = session.exec(select(Category).where(Category.user_email == user["email"])).all()
         if not user_categories:
-            print(f"No category found for {user['email']}. The task will be terminated.")
+            print(f"No categories found for {user['email']}. Task ending.")
             return
-
         service = get_gmail_service(token_data)
         messages = list_messages(service, max_results=10)
-
         category_map = {cat.name: cat for cat in user_categories}
 
         for msg_info in messages:
             msg_id = msg_info['id']
+            if session.get(Email, msg_id): continue
             
-            if session.get(Email, msg_id):
-                continue
-
             details = get_message_details(service, msg_id)
-            if not details or not details['body']:
-                continue
+            if not details: continue
             
-            ai_result = summarize_and_categorize_email(details['body'], user_categories)
-            if not ai_result:
-                continue
+            email_body_for_ai = details.get("body") or ""
+            
+            ai_result = summarize_and_categorize_email(email_body_for_ai, user_categories)
+            if not ai_result: continue
             
             chosen_category_name = ai_result.get("category")
             summary = ai_result.get("summary")
-            
             category_obj = category_map.get(chosen_category_name)
-            if not category_obj:
-                continue
+            if not category_obj: continue
 
             new_email = Email(
                 id=details['id'],
@@ -60,7 +52,8 @@ def process_emails_task(user: dict, token_data: dict):
                 category_id=category_obj.id,
                 snippet=details['snippet'],
                 sent_date=details['date'],
-                from_address=details['from']
+                from_address=details['from'],
+                body=details.get("body") or ""
             )
             
             try:
@@ -68,42 +61,30 @@ def process_emails_task(user: dict, token_data: dict):
                 session.commit()
                 archive_email(service, msg_id)
             except IntegrityError:
+                print(f"Email {msg_id} was already processed. Skipping.")
                 session.rollback()
                 continue
-
-@router.get("/emails/{email_id}", response_class=HTMLResponse)
-def view_email(request: Request, email_id: str, session: Session = Depends(get_session)):
-    user = request.session.get("user")
-    if not user:
-        return RedirectResponse(url="/")
-
-    email = session.get(Email, email_id)
-
-    if not email or email.user_email != user['email']:
-        return RedirectResponse(url="/categories")
-
-    return templates.TemplateResponse("email_detail.html", {"request": request, "email": email, "user": user})
-
+    print(f"Email processing task for {user['email']} finished.")
 
 @router.get("/process-emails")
-def trigger_manual_process(
-    request: Request,
-    background_tasks: BackgroundTasks
-):
+def trigger_manual_process(request: Request, background_tasks: BackgroundTasks):
     user = request.session.get("user")
     token_data = request.session.get("token")
-    if not user or not token_data:
-        return RedirectResponse(url="/")
-
+    if not user or not token_data: return RedirectResponse(url="/")
     background_tasks.add_task(process_emails_task, user, token_data)
-    
     return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/processing", response_class=HTMLResponse)
 def processing_page(request: Request):
     user = request.session.get("user")
-    if not user:
-        return RedirectResponse(url="/")
+    if not user: return RedirectResponse(url="/")
     return templates.TemplateResponse("processing.html", {"request": request, "user": user})
 
-    
+@router.get("/emails/{email_id}", response_class=HTMLResponse)
+def view_email(request: Request, email_id: str, session: Session = Depends(get_session)):
+    user = request.session.get("user")
+    if not user: return RedirectResponse(url="/")
+    email = session.get(Email, email_id)
+    if not email or email.user_email != user['email']:
+        return RedirectResponse(url="/categories")
+    return templates.TemplateResponse("email_detail.html", {"request": request, "email": email, "user": user})

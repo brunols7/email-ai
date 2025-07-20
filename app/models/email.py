@@ -8,7 +8,7 @@ class Email(SQLModel, table=True):
     snippet: str
     sent_date: str
     from_address: str
-    body: str
+    body: Optional[str] = None
 
     category_id: Optional[str] = Field(default=None, foreign_key="category.id")
     category: Optional["Category"] = Relationship(back_populates="emails")
