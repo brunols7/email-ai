@@ -19,20 +19,24 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-def process_emails_task(user: dict, token_data: dict):
-    print(f"Starting email processing task for {user['email']}")
+def process_emails_task(owner_email: str, processing_user_info: dict, token_data: dict):
+    print(f"Starting email processing for inbox {processing_user_info['email']} (owned by {owner_email})")
+    
     with Session(engine) as session:
-        user_categories = session.exec(select(Category).where(Category.user_email == user["email"])).all()
+        user_categories = session.exec(select(Category).where(Category.user_email == owner_email)).all()
+        
         if not user_categories:
-            print(f"No categories found for {user['email']}. Task ending.")
+            print(f"No categories found for owner {owner_email}. Task ending.")
             return
+        
         service = get_gmail_service(token_data)
         messages = list_messages(service, max_results=10)
         category_map = {cat.name: cat for cat in user_categories}
 
         for msg_info in messages:
             msg_id = msg_info['id']
-            if session.get(Email, msg_id): continue
+            existing_email = session.exec(select(Email).where(Email.id == msg_id, Email.user_email == owner_email)).first()
+            if existing_email: continue
             
             details = get_message_details(service, msg_id)
             if not details: continue
@@ -49,7 +53,7 @@ def process_emails_task(user: dict, token_data: dict):
 
             new_email = Email(
                 id=details['id'],
-                user_email=user['email'],
+                user_email=owner_email,
                 summary=summary,
                 category_id=category_obj.id,
                 snippet=details['snippet'],
@@ -66,7 +70,7 @@ def process_emails_task(user: dict, token_data: dict):
                 print(f"Email {msg_id} was already processed. Skipping.")
                 session.rollback()
                 continue
-    print(f"Email processing task for {user['email']} finished.")
+    print(f"Email processing task for inbox {processing_user_info['email']} finished.")
 
 @router.get("/process-emails")
 def trigger_manual_process(request: Request, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
@@ -75,23 +79,23 @@ def trigger_manual_process(request: Request, background_tasks: BackgroundTasks, 
     if not user or not token_data:
         return RedirectResponse(url="/")
 
-    print(f"Enfileirando processamento para a conta principal: {user['email']}")
-    background_tasks.add_task(process_emails_task, user, token_data)
+    owner_email = user['email']
+
+    print(f"Enfileirando processamento para a conta principal: {owner_email}")
+    background_tasks.add_task(process_emails_task, owner_email, user, token_data)
 
     linked_accounts = session.exec(
-        select(LinkedAccount).where(LinkedAccount.owner_email == user['email'])
+        select(LinkedAccount).where(LinkedAccount.owner_email == owner_email)
     ).all()
 
     for acc in linked_accounts:
         print(f"Enfileirando processamento para a conta vinculada: {acc.linked_email}")
         
         linked_token_data = json.loads(acc.token_data)
-        
         linked_user_info = {"email": acc.linked_email} 
         
-        background_tasks.add_task(process_emails_task, linked_user_info, linked_token_data)
+        background_tasks.add_task(process_emails_task, owner_email, linked_user_info, linked_token_data)
     
-
     return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/processing", response_class=HTMLResponse)
