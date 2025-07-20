@@ -116,7 +116,7 @@ def view_email(request: Request, email_id: str, session: Session = Depends(get_s
         return RedirectResponse(url="/categories")
     return templates.TemplateResponse("email_detail.html", {"request": request, "email": email, "user": user})
 
-router.post("/cron/sync-all/{secret}")
+@router.post("/cron/sync-all/{secret}")
 async def trigger_cron_sync_all(secret: str, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
     if not CRON_SECRET or secret != CRON_SECRET:
         print("CRON JOB: Unauthorized attempt.")
