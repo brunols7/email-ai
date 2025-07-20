@@ -3,12 +3,14 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
+import json
 
 from app.db import engine
 from app.gmail import get_gmail_service, list_messages, get_message_details, archive_email
 from app.ai_utils import summarize_and_categorize_email
 from app.models.category import Category
 from app.models.email import Email
+from app.models.linked_account import LinkedAccount
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -67,11 +69,29 @@ def process_emails_task(user: dict, token_data: dict):
     print(f"Email processing task for {user['email']} finished.")
 
 @router.get("/process-emails")
-def trigger_manual_process(request: Request, background_tasks: BackgroundTasks):
+def trigger_manual_process(request: Request, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
     user = request.session.get("user")
     token_data = request.session.get("token")
-    if not user or not token_data: return RedirectResponse(url="/")
+    if not user or not token_data:
+        return RedirectResponse(url="/")
+
+    print(f"Enfileirando processamento para a conta principal: {user['email']}")
     background_tasks.add_task(process_emails_task, user, token_data)
+
+    linked_accounts = session.exec(
+        select(LinkedAccount).where(LinkedAccount.owner_email == user['email'])
+    ).all()
+
+    for acc in linked_accounts:
+        print(f"Enfileirando processamento para a conta vinculada: {acc.linked_email}")
+        
+        linked_token_data = json.loads(acc.token_data)
+        
+        linked_user_info = {"email": acc.linked_email} 
+        
+        background_tasks.add_task(process_emails_task, linked_user_info, linked_token_data)
+    
+
     return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/processing", response_class=HTMLResponse)
