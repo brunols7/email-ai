@@ -3,6 +3,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from typing import List
+import asyncio
 
 from app.models.category import Category
 from app.models.email import Email
@@ -11,6 +12,8 @@ from app.email_routes import process_emails_task
 from app.gmail import get_gmail_service, batch_delete_emails
 from app.gmail import get_gmail_service, batch_delete_emails
 from app.ai_utils import find_unsubscribe_link
+from app.ai_utils import find_unsubscribe_link, agent_unsubscribe_from_link
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -72,7 +75,7 @@ def get_category_details(request: Request, category_id: str, session: Session = 
     })
 
 @router.post("/categories/{category_id}/batch-action")
-def handle_batch_action(
+async def handle_batch_action(
     request: Request,
     category_id: str,
     action: str = Form(...),
@@ -98,14 +101,17 @@ def handle_batch_action(
         return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
 
     elif action == "unsubscribe":
-        unsubscribe_links = []
+        unsubscribe_tasks = []
         for email_id in email_ids:
             email = session.get(Email, email_id)
             if email and email.user_email == user['email']:
-                link = find_unsubscribe_link(email.body)
-                unsubscribe_links.append({"from": email.from_address, "link": link})
+                link = find_unsubscribe_link(email.body) 
+                if link and link != "None":
+                    unsubscribe_tasks.append(agent_unsubscribe_from_link(link))
         
-        request.session["unsubscribe_links"] = unsubscribe_links
+        results = await asyncio.gather(*unsubscribe_tasks)
+        
+        request.session["unsubscribe_results"] = results
         return RedirectResponse(url="/unsubscribe-results", status_code=303)
 
     return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
