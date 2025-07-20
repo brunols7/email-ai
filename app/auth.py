@@ -3,9 +3,11 @@ from fastapi.responses import RedirectResponse
 from starlette.config import Config
 from authlib.integrations.starlette_client import OAuth
 from sqlmodel import Session, select
+import json
 
 from app.db import engine
 from app.models.category import Category
+from app.models.linked_account import LinkedAccount
 from app.email_routes import process_emails_task
 
 config = Config(".env")
@@ -27,32 +29,26 @@ def get_session():
         yield session
 
 DEFAULT_CATEGORIES = [
-    {
-        "name": "Job Opportunities",
-        "description": "Any email about job opportunities, alerts from LinkedIn, Gupy, etc., or contact from recruiters."
-    },
-    {
-        "name": "Invoices & Bills",
-        "description": "Receipts, invoices, payment confirmations, and service charges."
-    },
-    {
-        "name": "Promotions",
-        "description": "Marketing emails, offers, store newsletters, and promotions."
-    },
-    {
-        "name": "Social",
-        "description": "Notifications from social networks like Facebook, Instagram, etc."
-    },
-    {
-        "name": "Other",
-        "description": "Any email that does not clearly fit into the other categories."
-    }
+    { "name": "Job Opportunities", "description": "Any email about job opportunities, alerts from LinkedIn, Gupy, etc., or contact from recruiters." },
+    { "name": "Invoices & Bills", "description": "Receipts, invoices, payment confirmations, and service charges." },
+    { "name": "Promotions", "description": "Marketing emails, offers, store newsletters, and promotions." },
+    { "name": "Social", "description": "Notifications from social networks like Facebook, Instagram, etc." },
+    { "name": "Other", "description": "Any email that does not clearly fit into the other categories." }
 ]
 
 @router.get("/login")
 async def login(request: Request):
     redirect_uri = request.url_for("auth_callback")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    return await oauth.google.authorize_redirect(request, redirect_uri, access_type='offline', prompt='consent')
+
+@router.get("/login/add-account")
+async def add_account(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/")
+    
+    redirect_uri = request.url_for("add_account_callback")
+    return await oauth.google.authorize_redirect(request, redirect_uri, access_type='offline', prompt='consent')
 
 @router.get("/auth/callback")
 async def auth_callback(
@@ -62,46 +58,28 @@ async def auth_callback(
 ):
     try:
         token = await oauth.google.authorize_access_token(request)
-
         user_info = token.get("userinfo")
-        if not user_info:
-            user_info = await oauth.google.parse_id_token(request, token)
-
+        if not user_info: user_info = await oauth.google.parse_id_token(request, token)
         user_email = user_info.get("email")
         
-        user_session_data = {
-            "email": user_email,
-            "name": user_info.get("name"),
-            "picture": user_info.get("picture"),
-        }
-        
-        new_refresh_token = token.get("refresh_token")
+        user_session_data = { "email": user_email, "name": user_info.get("name"), "picture": user_info.get("picture"), }
         
         old_token_data = request.session.get("token", {})
-        
         token_session_data = {
-            "access_token": token["access_token"],
-            "expires_at": token.get("expires_at"),
-            "client_id": config("GOOGLE_CLIENT_ID"),
-            "client_secret": config("GOOGLE_CLIENT_SECRET"),
-            "refresh_token": new_refresh_token or old_token_data.get("refresh_token")
+            "access_token": token["access_token"], "expires_at": token.get("expires_at"),
+            "client_id": config("GOOGLE_CLIENT_ID"), "client_secret": config("GOOGLE_CLIENT_SECRET"),
+            "refresh_token": token.get("refresh_token") or old_token_data.get("refresh_token")
         }
 
         request.session["user"] = user_session_data
         request.session["token"] = token_session_data
 
-        existing_categories = session.exec(
-            select(Category).where(Category.user_email == user_email)
-        ).first()
+        existing_categories = session.exec(select(Category).where(Category.user_email == user_email)).first()
 
         if not existing_categories:
             print(f"New user detected: {user_email}. Creating default categories.")
             for cat_data in DEFAULT_CATEGORIES:
-                new_cat = Category(
-                    name=cat_data["name"],
-                    description=cat_data["description"],
-                    user_email=user_email
-                )
+                new_cat = Category(name=cat_data["name"], description=cat_data["description"], user_email=user_email)
                 session.add(new_cat)
             session.commit()
             
@@ -109,12 +87,53 @@ async def auth_callback(
             background_tasks.add_task(process_emails_task, user_session_data, token_session_data)
 
         return RedirectResponse(url="/dashboard")
-
     except Exception as e:
         print("AUTH ERROR:", e)
         return RedirectResponse(url="/")
 
+@router.get("/auth/add-account-callback")
+async def add_account_callback(request: Request, session: Session = Depends(get_session)):
+    owner_user = request.session.get("user")
+    if not owner_user:
+        return RedirectResponse(url="/")
+
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user_info = token.get("userinfo")
+        if not user_info: user_info = await oauth.google.parse_id_token(request, token)
+        
+        linked_email = user_info.get("email")
+        
+        token_data_to_store = {
+            "access_token": token["access_token"],
+            "refresh_token": token.get("refresh_token"),
+            "expires_at": token.get("expires_at"),
+            "client_id": config("GOOGLE_CLIENT_ID"),
+            "client_secret": config("GOOGLE_CLIENT_SECRET"),
+            "token_uri": "https://oauth2.googleapis.com/token"
+        }
+
+        existing_account = session.exec(select(LinkedAccount).where(LinkedAccount.linked_email == linked_email)).first()
+        if existing_account:
+            existing_account.token_data = json.dumps(token_data_to_store)
+            print(f"Updated token for linked account: {linked_email}")
+        else:
+            new_linked_account = LinkedAccount(
+                owner_email=owner_user["email"],
+                linked_email=linked_email,
+                token_data=json.dumps(token_data_to_store)
+            )
+            session.add(new_linked_account)
+            print(f"Added new linked account: {linked_email}")
+        
+        session.commit()
+        return RedirectResponse(url="/dashboard")
+    except Exception as e:
+        print("ADD ACCOUNT ERROR:", e)
+        return RedirectResponse(url="/dashboard")
+
 @router.get("/logout")
 async def logout(request: Request):
     request.session.pop("user", None)
+    request.session.pop("token", None)
     return RedirectResponse(url="/")

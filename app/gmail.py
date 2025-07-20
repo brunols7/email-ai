@@ -59,7 +59,7 @@ def get_message_details(service, msg_id: str, user_id="me") -> Dict:
         return {
             "id": message['id'],
             "snippet": message['snippet'],
-            "body": final_body, 
+            "body": final_body,
             "date": date,
             "from": from_address
         }

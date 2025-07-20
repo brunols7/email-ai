@@ -1,21 +1,23 @@
 import os
-from dotenv import load_dotenv
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 
 load_dotenv(encoding='utf-8')
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+
 from app.db import create_db_and_tables
 from app import auth, category_routes, email_routes
 
+from app.models import linked_account
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY was not set in the environment variables")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
