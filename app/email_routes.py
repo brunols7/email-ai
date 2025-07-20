@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 import json
+import os
 
 from app.db import engine
 from app.gmail import get_gmail_service, list_messages, get_message_details, archive_email
@@ -11,6 +12,8 @@ from app.ai_utils import summarize_and_categorize_email
 from app.models.category import Category
 from app.models.email import Email
 from app.models.linked_account import LinkedAccount
+
+CRON_SECRET = os.getenv("CRON_SECRET")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -112,3 +115,31 @@ def view_email(request: Request, email_id: str, session: Session = Depends(get_s
     if not email or email.user_email != user['email']:
         return RedirectResponse(url="/categories")
     return templates.TemplateResponse("email_detail.html", {"request": request, "email": email, "user": user})
+
+router.post("/cron/sync-all/{secret}")
+async def trigger_cron_sync_all(secret: str, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
+    if not CRON_SECRET or secret != CRON_SECRET:
+        print("CRON JOB: Unauthorized attempt.")
+        return {"detail": "Not authorized"}
+
+    print("CRON JOB: Starting sync for all accounts.")
+    
+    all_accounts = session.exec(select(LinkedAccount)).all()
+    
+    if not all_accounts:
+        print("CRON JOB: No accounts found in the database to sync.")
+        return {"status": "No accounts to sync."}
+
+    for account in all_accounts:
+        owner_email = account.owner_email
+        processing_email = account.linked_email
+        
+        print(f"CRON JOB: Queuing task for inbox {processing_email} (owned by {owner_email})")
+        
+        token_data = json.loads(account.token_data)
+        processing_user_info = {"email": processing_email}
+        
+        background_tasks.add_task(process_emails_task, owner_email, processing_user_info, token_data)
+
+    print(f"CRON JOB: Finished queuing {len(all_accounts)} tasks.")
+    return {"status": f"Queued {len(all_accounts)} sync tasks."}

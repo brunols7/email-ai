@@ -60,32 +60,52 @@ async def auth_callback(
         token = await oauth.google.authorize_access_token(request)
         user_info = token.get("userinfo")
         if not user_info: user_info = await oauth.google.parse_id_token(request, token)
+        
         user_email = user_info.get("email")
         
-        user_session_data = { "email": user_email, "name": user_info.get("name"), "picture": user_info.get("picture"), }
-        
-        old_token_data = request.session.get("token", {})
-        token_session_data = {
-            "access_token": token["access_token"], "expires_at": token.get("expires_at"),
-            "client_id": config("GOOGLE_CLIENT_ID"), "client_secret": config("GOOGLE_CLIENT_SECRET"),
-            "refresh_token": token.get("refresh_token") or old_token_data.get("refresh_token")
+        token_data_to_store = {
+            "access_token": token["access_token"],
+            "refresh_token": token.get("refresh_token"),
+            "expires_at": token.get("expires_at"),
+            "client_id": config("GOOGLE_CLIENT_ID"),
+            "client_secret": config("GOOGLE_CLIENT_SECRET"),
+            "token_uri": "https://oauth2.googleapis.com/token"
         }
 
+        existing_account = session.exec(
+            select(LinkedAccount).where(
+                LinkedAccount.owner_email == user_email,
+                LinkedAccount.is_primary == True
+            )
+        ).first()
+
+        if existing_account:
+            existing_account.token_data = json.dumps(token_data_to_store)
+            print(f"Updated token for primary account: {user_email}")
+        else:
+            new_primary_account = LinkedAccount(
+                owner_email=user_email,
+                linked_email=user_email,
+                token_data=json.dumps(token_data_to_store),
+                is_primary=True
+            )
+            session.add(new_primary_account)
+            print(f"Added new primary account to DB: {user_email}")
+        
+        user_session_data = { "email": user_email, "name": user_info.get("name"), "picture": user_info.get("picture"), }
         request.session["user"] = user_session_data
-        request.session["token"] = token_session_data
+        request.session["token"] = token_data_to_store 
 
         existing_categories = session.exec(select(Category).where(Category.user_email == user_email)).first()
-
         if not existing_categories:
             print(f"New user detected: {user_email}. Creating default categories.")
             for cat_data in DEFAULT_CATEGORIES:
                 new_cat = Category(name=cat_data["name"], description=cat_data["description"], user_email=user_email)
                 session.add(new_cat)
-            session.commit()
             
-            print(f"Running initial email sync for new user {user_email}")
-            background_tasks.add_task(process_emails_task, user_session_data, token_session_data)
+            background_tasks.add_task(process_emails_task, user_email, user_session_data, token_data_to_store)
 
+        session.commit()
         return RedirectResponse(url="/dashboard")
     except Exception as e:
         print("AUTH ERROR:", e)
