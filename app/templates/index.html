@@ -3,13 +3,19 @@
 {% block title %}Welcome - AI Email Sorter{% endblock %}
 
 {% block content %}
-<div class="text-center">
-    <h1 class="text-4xl font-bold text-gray-800 mb-4">Welcome to Email AI</h1>
-    <p class="text-lg text-gray-600 mb-8">The intelligent way to manage your inbox.</p>
+<div class="bg-white p-8 rounded-lg shadow-lg text-center">
+    <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+        Organize Your Inbox with the Power of AI
+    </h1>
+    <p class="mt-6 text-lg leading-8 text-gray-600">
+        AI Email Sorter automatically categorizes, summarizes, and archives your emails, letting you focus on what's important. Connect your Gmail account and take back control of your inbox.
+    </p>
     {% if not user %}
-    <a href="/login" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
-        Login with Google
-    </a>
+    <div class="mt-10 flex items-center justify-center gap-x-6">
+        <a href="/login" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Login with Google to Get Started
+        </a>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

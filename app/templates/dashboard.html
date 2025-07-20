@@ -3,11 +3,52 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
-<div class="mt-8">
-    <div class="bg-white p-6 rounded-lg shadow">
-        <h2 class="text-lg font-medium text-gray-900">Hi, {{ user.name }}!</h2>
-        <p class="mt-2 text-gray-600">This is your smart inbox. Manage your categories or connect another account to get started.</p>
+<div class="bg-white p-8 rounded-lg shadow-lg">
+    <h1 class="text-3xl font-bold text-gray-900">Welcome, {{ user.name }}!</h1>
+    <p class="mt-4 text-gray-600">
+        You're all set to reclaim your inbox. Here’s a quick guide to get the most out of the AI Email Sorter:
+    </p>
+
+    <div class="mt-8 border-t border-gray-200 pt-8">
+        <dl class="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-3">
+            <div class="flex flex-col">
+                <dt class="font-semibold text-gray-900">
+                    <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path></svg>
+                    </div>
+                    Step 1: Create Your Categories
+                </dt>
+                <dd class="mt-2 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">Go to the "My Categories" page to define the folders you want the AI to use. Be descriptive to help the AI sort more accurately!</p>
+                    <a href="/categories" class="mt-4 font-semibold text-indigo-600 hover:text-indigo-500">Go to My Categories &rarr;</a>
+                </dd>
+            </div>
+
+            <div class="flex flex-col">
+                <dt class="font-semibold text-gray-900">
+                    <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001a.75.75 0 01.548.727l.008 10.992a.75.75 0 01-.75.75H2.75a.75.75 0 01-.75-.75L2 10.074a.75.75 0 01.548-.727v.001h4.992a2.25 2.25 0 014.5 0h4.992zM7.5 9.348A2.25 2.25 0 015.25 7.5h.008a2.25 2.25 0 012.242 2.25h-.008zM16.5 9.348a2.25 2.25 0 01-2.25-1.848h.008a2.25 2.25 0 012.242 1.848h-.008z"></path></svg>
+                    </div>
+                    Step 2: Sync Your Emails
+                </dt>
+                <dd class="mt-2 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">Once you have categories, click the "Sync New Emails" button. The AI will read your new emails, summarize them, sort them, and archive them from your Gmail inbox.</p>
+                    <a href="/categories" class="mt-4 font-semibold text-indigo-600 hover:text-indigo-500">Start Syncing &rarr;</a>
+                </dd>
+            </div>
+
+            <div class="flex flex-col">
+                <dt class="font-semibold text-gray-900">
+                    <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0l-2.25.611a2.25 2.25 0 00-1.282 2.949l1.414 1.414a2.25 2.25 0 002.949-1.282L3 8.25zm18 0l2.25.611a2.25 2.25 0 011.282 2.949l-1.414 1.414a2.25 2.25 0 01-2.949-1.282L21 8.25z"></path></svg>
+                    </div>
+                    Step 3: Manage Your Inbox
+                </dt>
+                <dd class="mt-2 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">Click on a category to see the AI-summarized emails. From there, you can use the bulk actions to delete them or let our AI agent unsubscribe you from mailing lists automatically.</p>
+                </dd>
+            </div>
+        </dl>
     </div>
 </div>
 {% endblock %}
