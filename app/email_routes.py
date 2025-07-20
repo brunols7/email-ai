@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 import json
 import os
+import time
 
 from app.db import engine
 from app.gmail import get_gmail_service, list_messages, get_message_details, archive_email
@@ -46,6 +47,8 @@ def process_emails_task(owner_email: str, processing_user_info: dict, token_data
             
             email_body_for_ai = details.get("body") or ""
             
+            time.sleep(2)
+
             ai_result = summarize_and_categorize_email(email_body_for_ai, user_categories)
             if not ai_result: continue
             
