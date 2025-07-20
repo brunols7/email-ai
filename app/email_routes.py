@@ -71,6 +71,19 @@ def process_emails_task(user: dict, token_data: dict):
                 session.rollback()
                 continue
 
+@router.get("/emails/{email_id}", response_class=HTMLResponse)
+def view_email(request: Request, email_id: str, session: Session = Depends(get_session)):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/")
+
+    email = session.get(Email, email_id)
+
+    if not email or email.user_email != user['email']:
+        return RedirectResponse(url="/categories")
+
+    return templates.TemplateResponse("email_detail.html", {"request": request, "email": email, "user": user})
+
 
 @router.get("/process-emails")
 def trigger_manual_process(

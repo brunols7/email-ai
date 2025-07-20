@@ -9,6 +9,8 @@ from app.models.email import Email
 from app.db import engine
 from app.email_routes import process_emails_task
 from app.gmail import get_gmail_service, batch_delete_emails
+from app.gmail import get_gmail_service, batch_delete_emails
+from app.ai_utils import find_unsubscribe_link
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -73,6 +75,7 @@ def get_category_details(request: Request, category_id: str, session: Session = 
 def handle_batch_action(
     request: Request,
     category_id: str,
+    action: str = Form(...),
     email_ids: List[str] = Form(...),
     session: Session = Depends(get_session)
 ):
@@ -81,15 +84,37 @@ def handle_batch_action(
     if not user or not token_data:
         return RedirectResponse(url="/")
 
-    service = get_gmail_service(token_data)
-    batch_delete_emails(service, email_ids)
+    if action == "delete":
+        service = get_gmail_service(token_data)
+        batch_delete_emails(service, email_ids)
 
-    for email_id in email_ids:
-        email_to_delete = session.get(Email, email_id)
-        if email_to_delete and email_to_delete.user_email == user['email']:
-            session.delete(email_to_delete)
-    
-    session.commit()
-    print(f"{len(email_ids)} emails successfully deleted from the local database.")
+        for email_id in email_ids:
+            email_to_delete = session.get(Email, email_id)
+            if email_to_delete and email_to_delete.user_email == user['email']:
+                session.delete(email_to_delete)
+        
+        session.commit()
+        print(f"{len(email_ids)} emails successfully deleted.")
+        return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
+
+    elif action == "unsubscribe":
+        unsubscribe_links = []
+        for email_id in email_ids:
+            email = session.get(Email, email_id)
+            if email and email.user_email == user['email']:
+                link = find_unsubscribe_link(email.body)
+                unsubscribe_links.append({"from": email.from_address, "link": link})
+        
+        request.session["unsubscribe_links"] = unsubscribe_links
+        return RedirectResponse(url="/unsubscribe-results", status_code=303)
 
     return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
+
+@router.get("/unsubscribe-results")
+def unsubscribe_results(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/")
+    
+    links = request.session.pop("unsubscribe_links", [])
+    return templates.TemplateResponse("unsubscribe_results.html", {"request": request, "links": links})

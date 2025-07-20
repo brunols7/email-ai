@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Email from {{ email.from_address }}</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .email-container { border: 1px solid #ccc; border-radius: 8px; max-width: 800px; margin: auto; }
+        .email-header { background-color: #f7f7f7; padding: 15px; border-bottom: 1px solid #ccc; }
+        .email-body { padding: 20px; }
+        .back-link { margin-bottom: 20px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <a href="/categories/{{ email.category_id }}" class="back-link">&larr; Back to Category</a>
+
+    <div class="email-container">
+        <div class="email-header">
+            <p><strong>From:</strong> {{ email.from_address }}</p>
+            <p><strong>Date:</strong> {{ email.sent_date }}</p>
+            <p><strong>AI Summary:</strong> {{ email.summary }}</p>
+        </div>
+        <div class="email-body">
+            {{ email.body | safe }}
+        </div>
+    </div>
+</body>
+</html>

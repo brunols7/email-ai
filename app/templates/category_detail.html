@@ -9,23 +9,32 @@
     <p><i>{{ category.description }}</i></p>
     <hr />
 
-    <form action="/categories/{{ category.id }}/batch-action" method="post">
+    <form action="/categories/{{ category.id }}/batch-action" method="post" id="email-form">
         
-        <button type="submit" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 15px;">
-            Delete Selected
-        </button>
+        <div style="margin-bottom: 15px;">
+            <input type="checkbox" id="select-all" onclick="toggle(this);">
+            <label for="select-all">Select All</label>
+            
+            <button type="submit" name="action" value="delete" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 20px;">
+                Delete Selected
+            </button>
+            
+            <button type="submit" name="action" value="unsubscribe" style="padding: 10px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+                Unsubscribe Selected
+            </button>
+        </div>
 
         {% if category.emails %}
             <ul>
             {% for email in category.emails %}
                 <li style="list-style-type: none; margin-bottom: 15px;">
-                    <input type="checkbox" name="email_ids" value="{{ email.id }}" style="margin-right: 10px;">
+                    <input type="checkbox" name="email_ids" value="{{ email.id }}" class="email-checkbox" style="margin-right: 10px; vertical-align: top;">
                     
-                    <span>
+                    <a href="/emails/{{ email.id }}" style="text-decoration: none; color: inherit; display: inline-block;">
                         <p><strong>From:</strong> {{ email.from_address }}</p>
                         <p><strong>Summary:</strong> {{ email.summary }}</p>
                         <p><small><i>Snippet: {{ email.snippet }}</i></small></p>
-                    </span>
+                    </a>
                 </li>
                 <hr />
             {% endfor %}
@@ -40,5 +49,15 @@
     <a href="/categories">View all categories</a>
     <br>
     <a href="/dashboard">Back to Dashboard</a>
+
+    <script>
+        function toggle(source) {
+            checkboxes = document.getElementsByClassName('email-checkbox');
+            for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+    </script>
+
 </body>
 </html>

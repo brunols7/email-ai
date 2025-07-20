@@ -1,8 +1,10 @@
 import os
 import json
 import google.generativeai as genai
-from typing import List
+from typing import List, Optional
 from app.models.category import Category
+import re
+
 
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -49,4 +51,34 @@ Respond ONLY with a valid JSON object in the following format, with no other tex
 
     except Exception as e:
         print(f"Error calling Gemini API or parsing JSON: {e}")
+        return None
+    
+def find_unsubscribe_link(body: str) -> Optional[str]:
+
+    prompt = f"""
+Analyze the following email's HTML body. Your task is to find the most likely URL for unsubscribing from this newsletter or mailing list.
+
+Look for anchor tags (`<a>`) with text like "unsubscribe", "manage your preferences", "opt-out", or similar phrases.
+
+Return ONLY the URL from the `href` attribute of that anchor tag. Do not return any other text, explanation, or formatting. If no link is found, return the string "None".
+
+HTML Body:
+\"\"\"
+{body}
+\"\"\"
+
+Unsubscribe URL:
+"""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        
+        url_match = re.search(r'https?://[^\s"]+', response.text)
+        if url_match:
+            url = url_match.group(0)
+            return url.strip().strip('.').strip(',')
+            
+        return None
+    except Exception as e:
+        print(f"Error calling Gemini API to find unsubscribe link: {e}")
         return None

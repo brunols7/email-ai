@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unsubscribe Links Found</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        li { margin-bottom: 15px; }
+        a { color: #007bff; }
+        .not-found { color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unsubscribe Links</h1>
+        <p>We used AI to find the following unsubscribe links from the emails you selected. Click each link to open it in a new tab and complete the process.</p>
+        
+        <ul>
+            {% for item in links %}
+                <li>
+                    <strong>From:</strong> {{ item.from }} <br>
+                    {% if item.link and item.link != "None" %}
+                        <strong>Link:</strong> <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.link }}</a>
+                    {% else %}
+                        <strong class="not-found">Link: Not found</strong>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        <br>
+        <a href="/categories"> &larr; Back to Categories</a>
+    </div>
+</body>
+</html>
