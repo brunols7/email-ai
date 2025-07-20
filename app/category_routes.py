@@ -56,7 +56,7 @@ def create_category(
     session.add(new_cat)
     session.commit()
 
-    background_tasks.add_task(process_emails_task, user, token_data)
+    background_tasks.add_task(process_emails_task, user['email'], user, token_data)
 
     return RedirectResponse(url="/processing", status_code=303)
 
