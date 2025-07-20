@@ -3,10 +3,9 @@
 {% block title %}Processing Emails...{% endblock %}
 
 {% block content %}
-<meta http-equiv="refresh" content="15;url=/categories">
 <div class="text-center py-16">
     <h1 class="text-3xl font-semibold text-gray-800">Processing Your Emails</h1>
-    <p class="mt-2 text-gray-600">We're using AI to organize your inbox. You'll be automatically redirected shortly.</p>
+    <p id="status-text" class="mt-2 text-gray-600">We're using AI to organize your inbox. This might take a moment...</p>
     
     <div class="mt-8 flex justify-center items-center">
         <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -14,6 +13,49 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
     </div>
-     <p class="mt-8 text-sm text-gray-500">If nothing happens, <a href="/categories" class="font-medium text-indigo-600 hover:text-indigo-500">click here to return</a>.</p>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const statusText = document.getElementById("status-text");
+        let checkCount = 0;
+        const maxChecks = 20;
+
+        const intervalId = setInterval(() => {
+            checkCount++;
+            if (checkCount > maxChecks) {
+                clearInterval(intervalId);
+                statusText.innerText = "The process is taking longer than expected. You can navigate away or wait.";
+                return;
+            }
+
+            fetch(`/sync-status`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'rate_limit_exceeded') {
+                        clearInterval(intervalId);
+                        alert("Gemini API Warning: You have exceeded your free tier limit. The process has been stopped. Please wait a while before trying again.");
+                        window.location.href = "/categories";
+                    } else if (data.status === 'completed') {
+                        clearInterval(intervalId);
+                        statusText.innerText = "Sync completed successfully! Redirecting...";
+                        window.location.href = "/categories";
+                    } else if (data.status === 'failed') {
+                        clearInterval(intervalId);
+                        alert("An unexpected error occurred during the sync process. Please check the server logs.");
+                        window.location.href = "/categories";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking sync status:", error);
+                    clearInterval(intervalId);
+                });
+        }, 3000);
+    });
+</script>
 {% endblock %}

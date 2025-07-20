@@ -7,7 +7,7 @@ import re
 from playwright.async_api import async_playwright
 import asyncio
 from uuid import uuid4
-
+from google.api_core.exceptions import ResourceExhausted
 
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -23,7 +23,7 @@ def summarize_and_categorize_email(body: str, user_categories: List[Category]) -
         [f'- "{cat.name}": {cat.description}' for cat in user_categories]
     )
     
-    category_list_str += '\n- "Outros": Use esta categoria para qualquer e-mail que não se encaixe claramente nas outras categorias.'
+    category_list_str += '\n- "Other": Use this category for any email that does not clearly fit into the other categories.'
 
 
     prompt = f"""
@@ -45,19 +45,17 @@ Respond ONLY with a valid JSON object in the following format, with no other tex
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
         response = model.generate_content(prompt)
-        
         cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
-        
         return json.loads(cleaned_response)
-
+    except ResourceExhausted as e:
+        print(f"Gemini API rate limit exceeded during summarization: {e}")
+        raise e  
     except Exception as e:
         print(f"Error calling Gemini API or parsing JSON: {e}")
         return None
     
 def find_unsubscribe_link(body: str) -> Optional[str]:
-
     prompt = f"""
 Analyze the following email's HTML body. Your task is to find the most likely URL for unsubscribing from this newsletter or mailing list.
 
@@ -82,12 +80,14 @@ Unsubscribe URL:
             return url.strip().strip('.').strip(',')
             
         return None
+    except ResourceExhausted as e:
+        print(f"Gemini API rate limit exceeded during link finding: {e}")
+        raise e
     except Exception as e:
         print(f"Error calling Gemini API to find unsubscribe link: {e}")
         return None
 
 async def agent_unsubscribe_from_link(url: str) -> dict:
-
     if not url or "http" not in url:
         return {"success": False, "reason": "Invalid URL."}
 
@@ -115,7 +115,7 @@ async def agent_unsubscribe_from_link(url: str) -> dict:
 
             HTML:
             \"\"\"
-            {html_content[:10000]} # Limit to avoid token overflow
+            {html_content[:10000]}
             \"\"\"
             """
 
@@ -138,8 +138,10 @@ async def agent_unsubscribe_from_link(url: str) -> dict:
 
             await browser.close()
             
-            return {"success": True, "reason": f"Unsubscribe action executed. Check screenshot: {screenshot_path}"}
-
+            return {"success": True, "reason": f"Unsubscribe action executed. Screenshot saved at {screenshot_path}"}
+    except ResourceExhausted as e:
+        print(f"Gemini API rate limit exceeded during unsubscribe agent: {e}")
+        return {"success": False, "reason": "Gemini API rate limit was exceeded during this operation."}
     except Exception as e:
         print(f"Error in unsubscribe agent for URL {url}: {e}")
         return {"success": False, "reason": str(e)}
