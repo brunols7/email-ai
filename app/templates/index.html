@@ -1,19 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Email AI</title>
-    <meta charset="UTF-8" lang="en">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-    <h1>Welcome to Email AI</h1>
+{% extends "layout.html" %}
 
-    {% if user %}
-        <p>Hello, {{ user.name }} ({{ user.email }})</p>
-        <a href="/dashboard">Go to Dashboard</a><br>
-        <a href="/logout">Logout</a>
-    {% else %}
-        <a href="/login">Login with Google</a>
+{% block title %}Welcome - AI Email Sorter{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="text-4xl font-bold text-gray-800 mb-4">Welcome to Email AI</h1>
+    <p class="text-lg text-gray-600 mb-8">The intelligent way to manage your inbox.</p>
+    {% if not user %}
+    <a href="/login" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+        Login with Google
+    </a>
     {% endif %}
-</body>
-</html>
+</div>
+{% endblock %}

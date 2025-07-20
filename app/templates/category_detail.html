@@ -1,63 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>Category Details: {{ category.name }}</title>
-</head>
-<body>
-    <h1>Emails in Category: {{ category.name }}</h1>
-    <p><i>{{ category.description }}</i></p>
-    <hr />
+{% extends "layout.html" %}
 
-    <form action="/categories/{{ category.id }}/batch-action" method="post" id="email-form">
-        
-        <div style="margin-bottom: 15px;">
-            <input type="checkbox" id="select-all" onclick="toggle(this);">
-            <label for="select-all">Select All</label>
+{% block title %}Category: {{ category.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-6 pb-4 border-b border-gray-200">
+    <a href="/categories" class="text-sm font-medium text-gray-500 hover:text-gray-700">&larr; Back to All Categories</a>
+    <h1 class="mt-2 text-2xl font-semibold text-gray-900">{{ category.name }}</h1>
+    <p class="mt-1 text-sm text-gray-600"><i>{{ category.description }}</i></p>
+</div>
+
+<form action="/categories/{{ category.id }}/batch-action" method="post" id="email-form">
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center">
+                <input type="checkbox" id="select-all" onclick="toggle(this);" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="select-all" class="ml-2 block text-sm font-medium text-gray-700">Select All</label>
+            </div>
             
-            <button type="submit" name="action" value="delete" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 20px;">
+            <button type="submit" name="action" value="delete" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700">
                 Delete Selected
             </button>
             
-            <button type="submit" name="action" value="unsubscribe" style="padding: 10px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            <button type="submit" name="action" value="unsubscribe" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-cyan-600 hover:bg-cyan-700">
                 Unsubscribe Selected
             </button>
         </div>
+    </div>
 
-        {% if category.emails %}
-            <ul>
-            {% for email in category.emails %}
-                <li style="list-style-type: none; margin-bottom: 15px;">
-                    <input type="checkbox" name="email_ids" value="{{ email.id }}" class="email-checkbox" style="margin-right: 10px; vertical-align: top;">
-                    
-                    <a href="/emails/{{ email.id }}" style="text-decoration: none; color: inherit; display: inline-block;">
-                        <p><strong>From:</strong> {{ email.from_address }}</p>
-                        <p><strong>Summary:</strong> {{ email.summary }}</p>
-                        <p><small><i>Snippet: {{ email.snippet }}</i></small></p>
-                    </a>
-                </li>
-                <hr />
-            {% endfor %}
-            </ul>
+    <ul class="bg-white shadow overflow-hidden sm:rounded-md divide-y divide-gray-200">
+        {% for email in category.emails %}
+        <li class="p-4 flex items-start space-x-4">
+            <input type="checkbox" name="email_ids" value="{{ email.id }}" class="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 email-checkbox">
+            <div class="flex-1">
+                <a href="/emails/{{ email.id }}" class="block hover:bg-gray-50 p-2 rounded-md">
+                    <div class="flex justify-between items-center">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ email.from_address }}</p>
+                        <p class="text-xs text-gray-500">{{ email.sent_date }}</p>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-600"><strong>Summary:</strong> {{ email.summary }}</p>
+                    <p class="mt-1 text-xs text-gray-500 italic">Snippet: {{ email.snippet }}</p>
+                </a>
+            </div>
+        </li>
         {% else %}
-            <p>No emails have been classified in this category yet.</p>
-        {% endif %}
-    
-    </form>
-    
-    <br>
-    <a href="/categories">View all categories</a>
-    <br>
-    <a href="/dashboard">Back to Dashboard</a>
+        <li class="p-6 text-center text-sm text-gray-500">No emails have been classified in this category yet.</li>
+        {% endfor %}
+    </ul>
+</form>
 
-    <script>
-        function toggle(source) {
-            checkboxes = document.getElementsByClassName('email-checkbox');
-            for (var i = 0; i < checkboxes.length; i++) {
-                checkboxes[i].checked = source.checked;
-            }
+<script>
+    function toggle(source) {
+        checkboxes = document.getElementsByClassName('email-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = source.checked;
         }
-    </script>
-
-</body>
-</html>
+    }
+</script>
+{% endblock %}

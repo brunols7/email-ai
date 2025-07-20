@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Email Sorter{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full">
+    <div class="min-h-full flex">
+        <div class="flex flex-col w-64 bg-gray-800 text-white">
+            <div class="flex items-center justify-center h-16 flex-shrink-0 bg-gray-900">
+                <h1 class="text-xl font-semibold">AI Email Sorter</h1>
+            </div>
+            <div class="flex-1 flex flex-col overflow-y-auto">
+                <nav class="flex-1 px-2 py-4 space-y-1">
+                    {% if user %}
+                    <a href="/dashboard" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        Dashboard
+                    </a>
+                    <a href="/categories" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        My Categories
+                    </a>
+                    <a href="/login/add-account" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        Connect Account
+                    </a>
+                    <a href="/logout" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        Logout
+                    </a>
+                    {% else %}
+                     <a href="/login" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        Login with Google
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col">
+            <main class="flex-1 relative overflow-y-auto focus:outline-none">
+                <div class="py-6">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                        {% block content %}{% endblock %}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

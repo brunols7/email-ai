@@ -1,18 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard</title>
-</head>
-<body>
-    <h2>Hi, {{ user.name }}</h2>
-    <p>Your smart inbox ✨</p>
-    
-    <a href="/categories">Manage My Categories</a>
-    <br><br>
+{% extends "layout.html" %}
 
-    <a href="/login/add-account">Connect Another Gmail Account</a>
-    <br><br>
+{% block title %}Dashboard{% endblock %}
 
-    <a href="/logout">Logout</a>
-</body>
-</html>
+{% block content %}
+<h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
+<div class="mt-8">
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-lg font-medium text-gray-900">Hi, {{ user.name }}!</h2>
+        <p class="mt-2 text-gray-600">This is your smart inbox. Manage your categories or connect another account to get started.</p>
+    </div>
+</div>
+{% endblock %}

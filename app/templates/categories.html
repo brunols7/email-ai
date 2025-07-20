@@ -1,28 +1,54 @@
-<h1>My Categories</h1>
-<p>Create categories for the AI to organize your emails.</p>
+{% extends "layout.html" %}
 
-<a href="/process-emails" style="display: inline-block; padding: 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-bottom: 20px;">
-    Sync New Emails
-</a>
+{% block title %}My Categories{% endblock %}
 
-<hr>
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-900">My Categories</h1>
+        <p class="mt-1 text-sm text-gray-600">Create and manage categories for the AI to organize your emails.</p>
+    </div>
+    <a href="/process-emails" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Sync New Emails
+    </a>
+</div>
 
-<form method="post" action="/categories">
-    <input name="name" placeholder="Category name" required />
-    <input name="description" placeholder="Description (helps AI classify better)" />
-    <button type="submit">Create Category</button>
-</form>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="md:col-span-1">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-gray-900">Create New Category</h3>
+            <form method="post" action="/categories" class="mt-4 space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Category Name</label>
+                    <input type="text" name="name" id="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" id="description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Helps AI classify better..."></textarea>
+                </div>
+                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Create Category
+                </button>
+            </form>
+        </div>
+    </div>
 
-<hr>
-
-<h2>Existing Categories</h2>
-<ul>
-    {% for cat in categories %}
-        <li>
-            <strong><a href="/categories/{{ cat.id }}">{{ cat.name }}</a></strong>: {{ cat.description or 'No description' }}
-        </li>
-    {% endfor %}
-</ul>
-
-<br>
-<a href="/dashboard">Back to Dashboard</a>
+    <div class="md:col-span-2">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-gray-900">Existing Categories</h3>
+            <ul class="mt-4 divide-y divide-gray-200">
+                {% for cat in categories %}
+                <li class="py-4">
+                    <a href="/categories/{{ cat.id }}" class="block hover:bg-gray-50 p-2 rounded-md">
+                        <p class="text-sm font-medium text-indigo-600 truncate">{{ cat.name }}</p>
+                        <p class="text-sm text-gray-500">{{ cat.description or 'No description provided' }}</p>
+                    </a>
+                </li>
+                {% else %}
+                <li class="py-4 text-sm text-gray-500">You haven't created any categories yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
