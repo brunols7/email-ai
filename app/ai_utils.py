@@ -130,7 +130,7 @@ async def agent_unsubscribe_from_link(url: str) -> dict:
                 await browser.close()
                 return {"success": False, "reason": "AI could not identify a confirmation button on the page."}
 
-            await page.click(selector, timeout=10000)
+            await page.click(selector, timeout=25000)
             
             await asyncio.sleep(2)
             screenshot_path = f"unsubscribe_{uuid4()}.png"
