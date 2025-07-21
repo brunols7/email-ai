@@ -14,6 +14,7 @@ from app.ai_utils import summarize_and_categorize_email
 from app.models.category import Category
 from app.models.email import Email
 from app.models.linked_account import LinkedAccount
+from app.models.sync_status import SyncStatus
 
 CRON_SECRET = os.getenv("CRON_SECRET")
 
@@ -26,13 +27,22 @@ def get_session():
     with Session(engine) as session:
         yield session
 
+def set_sync_status(owner_email: str, status: str, db_session: Session):
+    status_obj = db_session.get(SyncStatus, owner_email)
+    if status_obj:
+        status_obj.status = status
+    else:
+        status_obj = SyncStatus(owner_email=owner_email, status=status)
+        db_session.add(status_obj)
+    db_session.commit()
+
 def process_emails_task_logic(owner_email: str, processing_user_info: dict, token_data: dict):
     print(f"Starting email processing for inbox {processing_user_info['email']} (owned by {owner_email})")
     
     with Session(engine) as session:
         user_categories = session.exec(select(Category).where(Category.user_email == owner_email)).all()
         if not user_categories:
-            print(f"No categories found for owner {owner_email}. Task ending.")
+            set_sync_status(owner_email, 'completed', session)
             return
         
         service = get_gmail_service(token_data)
@@ -83,15 +93,16 @@ def process_emails_task_logic(owner_email: str, processing_user_info: dict, toke
     print(f"Email processing task for inbox {processing_user_info['email']} finished.")
 
 def process_emails_task_wrapper(owner_email: str, processing_user_info: dict, token_data: dict):
-    try:
-        process_emails_task_logic(owner_email, processing_user_info, token_data)
-        sync_status[owner_email] = 'completed'
-    except ResourceExhausted:
-        print(f"Stopping task for {owner_email} due to rate limit.")
-        sync_status[owner_email] = 'rate_limit_exceeded'
-    except Exception as e:
-        print(f"An unexpected error occurred in background task for {owner_email}: {e}")
-        sync_status[owner_email] = 'failed'
+    with Session(engine) as session:
+        try:
+            process_emails_task_logic(owner_email, processing_user_info, token_data)
+            set_sync_status(owner_email, 'completed', session)
+        except ResourceExhausted:
+            print(f"Stopping task for {owner_email} due to rate limit.")
+            set_sync_status(owner_email, 'rate_limit_exceeded', session)
+        except Exception as e:
+            print(f"An unexpected error occurred in background task for {owner_email}: {e}")
+            set_sync_status(owner_email, 'failed', session)
 
 @router.get("/process-emails")
 def trigger_manual_process(request: Request, background_tasks: BackgroundTasks, session: Session = Depends(get_session)):
@@ -101,7 +112,7 @@ def trigger_manual_process(request: Request, background_tasks: BackgroundTasks, 
         return RedirectResponse(url="/")
 
     owner_email = user['email']
-    sync_status[owner_email] = 'processing' 
+    set_sync_status(owner_email, 'processing', session)
 
     background_tasks.add_task(process_emails_task_wrapper, owner_email, user, token_data)
 
@@ -122,18 +133,18 @@ def processing_page(request: Request):
     return templates.TemplateResponse("processing.html", {"request": request, "user": user})
 
 @router.get("/sync-status")
-def get_sync_status(request: Request):
+def get_sync_status(request: Request, session: Session = Depends(get_session)):
     user = request.session.get("user")
     if not user:
         return JSONResponse({"status": "error", "message": "Not authenticated"}, status_code=401)
     
     owner_email = user['email']
-    status = sync_status.get(owner_email, "idle")
+    status_obj = session.get(SyncStatus, owner_email)
     
-    if status != 'processing':
-        sync_status.pop(owner_email, None)
-
-    return JSONResponse({"status": status})
+    if status_obj:
+        return JSONResponse({"status": status_obj.status})
+    
+    return JSONResponse({"status": "idle"})
 
 @router.get("/emails/{email_id}", response_class=HTMLResponse)
 def view_email(request: Request, email_id: str, session: Session = Depends(get_session)):
