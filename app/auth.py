@@ -36,6 +36,7 @@ DEFAULT_CATEGORIES = [
     { "name": "Other", "description": "Any email that does not clearly fit into the other categories." }
 ]
 
+
 @router.get("/login")
 async def login(request: Request):
     redirect_uri = request.url_for("auth_callback")
@@ -103,7 +104,8 @@ async def auth_callback(
                 new_cat = Category(name=cat_data["name"], description=cat_data["description"], user_email=user_email)
                 session.add(new_cat)
             
-            background_tasks.add_task(process_emails_task, user_email, user_session_data, token_data_to_store)
+            # A chamada à tarefa de background continua igual, mas agora importa do sítio certo
+            background_tasks.add_task(process_emails_task_wrapper, user_email, user_session_data, token_data_to_store)
 
         session.commit()
         return RedirectResponse(url="/dashboard")

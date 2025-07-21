@@ -8,10 +8,8 @@ import asyncio
 from app.models.category import Category
 from app.models.email import Email
 from app.db import engine
-from app.email_routes import process_emails_task
+from app.tasks import process_emails_task_wrapper, set_sync_status
 from app.gmail import get_gmail_service, batch_delete_emails
-from app.gmail import get_gmail_service, batch_delete_emails
-from app.ai_utils import find_unsubscribe_link
 from app.ai_utils import find_unsubscribe_link, agent_unsubscribe_from_link
 
 
@@ -56,8 +54,7 @@ def create_category(
     session.add(new_cat)
     session.commit()
 
-    background_tasks.add_task(process_emails_task, user['email'], user, token_data)
-
+    background_tasks.add_task(process_emails_task_wrapper, user['email'], user, token_data)
     return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/categories/{category_id}")
