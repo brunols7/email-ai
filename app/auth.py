@@ -8,7 +8,7 @@ import json
 from app.db import engine
 from app.models.category import Category
 from app.models.linked_account import LinkedAccount
-from app.email_routes import process_emails_task
+from app.tasks import process_emails_task_wrapper, set_sync_status
 
 config = Config(".env")
 router = APIRouter()
@@ -104,7 +104,6 @@ async def auth_callback(
                 new_cat = Category(name=cat_data["name"], description=cat_data["description"], user_email=user_email)
                 session.add(new_cat)
             
-            # A chamada à tarefa de background continua igual, mas agora importa do sítio certo
             background_tasks.add_task(process_emails_task_wrapper, user_email, user_session_data, token_data_to_store)
 
         session.commit()

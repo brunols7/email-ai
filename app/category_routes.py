@@ -52,9 +52,12 @@ def create_category(
 
     new_cat = Category(name=name, description=description, user_email=user["email"])
     session.add(new_cat)
+    
+    set_sync_status(user['email'], 'processing', session)
+    background_tasks.add_task(process_emails_task_wrapper, user['email'], user, token_data)
+    
     session.commit()
 
-    background_tasks.add_task(process_emails_task_wrapper, user['email'], user, token_data)
     return RedirectResponse(url="/processing", status_code=303)
 
 @router.get("/categories/{category_id}")
@@ -94,21 +97,20 @@ async def handle_batch_action(
                 session.delete(email_to_delete)
         
         session.commit()
-        print(f"{len(email_ids)} emails successfully deleted.")
         return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
 
     elif action == "unsubscribe":
-        unsubscribe_tasks = []
+        unsubscribe_results = []
         for email_id in email_ids:
             email = session.get(Email, email_id)
             if email and email.user_email == user['email']:
-                link = find_unsubscribe_link(email.body) 
+                link = find_unsubscribe_link(email.body)
                 if link and link != "None":
-                    unsubscribe_tasks.append(agent_unsubscribe_from_link(link))
+                    result = await agent_unsubscribe_from_link(link)
+                    result['from_address'] = email.from_address
+                    unsubscribe_results.append(result)
         
-        results = await asyncio.gather(*unsubscribe_tasks)
-        
-        request.session["unsubscribe_results"] = results
+        request.session["unsubscribe_results"] = unsubscribe_results
         return RedirectResponse(url="/unsubscribe-results", status_code=303)
 
     return RedirectResponse(url=f"/categories/{category_id}", status_code=303)
@@ -119,5 +121,5 @@ def unsubscribe_results(request: Request):
     if not user:
         return RedirectResponse(url="/")
     
-    links = request.session.pop("unsubscribe_links", [])
-    return templates.TemplateResponse("unsubscribe_results.html", {"request": request, "links": links})
+    results = request.session.pop("unsubscribe_results", [])
+    return templates.TemplateResponse("unsubscribe_results.html", {"request": request, "unsubscribe_results": results})

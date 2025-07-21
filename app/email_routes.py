@@ -4,7 +4,6 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 import json
 import os
-
 from app.db import engine
 from app.models.email import Email
 from app.models.linked_account import LinkedAccount
@@ -58,7 +57,11 @@ def get_sync_status(request: Request, session: Session = Depends(get_session)):
     status_obj = session.get(SyncStatus, owner_email)
     
     if status_obj:
-        return JSONResponse({"status": status_obj.status})
+        status_value = status_obj.status
+        if status_value != 'processing':
+            session.delete(status_obj)
+            session.commit()
+        return JSONResponse({"status": status_value})
     
     return JSONResponse({"status": "idle"})
 
