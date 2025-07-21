@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Request, Depends, BackgroundTasks, JSONResponse
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi import APIRouter, Request, Depends, BackgroundTasks
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 import json
@@ -9,7 +9,7 @@ from app.db import engine
 from app.models.email import Email
 from app.models.linked_account import LinkedAccount
 from app.models.sync_status import SyncStatus
-from app.tasks import process_emails_task_wrapper, set_sync_status # <-- ALTERAÇÃO IMPORTANTE
+from app.tasks import process_emails_task_wrapper, set_sync_status 
 
 CRON_SECRET = os.getenv("CRON_SECRET")
 
