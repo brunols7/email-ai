@@ -19,60 +19,59 @@ def set_sync_status(owner_email: str, status: str, db_session: Session):
         db_session.add(status_obj)
     db_session.commit()
 
-def process_emails_task_logic(owner_email: str, processing_user_info: dict, token_data: dict):
-    with Session(engine) as session:
-        user_categories = session.exec(select(Category).where(Category.user_email == owner_email)).all()
-        if not user_categories:
-            set_sync_status(owner_email, 'completed', session)
-            return
+def process_emails_task_logic(owner_email: str, processing_user_info: dict, token_data: dict, db_session: Session):
+    user_categories = db_session.exec(select(Category).where(Category.user_email == owner_email)).all()
+    if not user_categories:
+        set_sync_status(owner_email, 'completed', db_session)
+        return
+    
+    service = get_gmail_service(token_data)
+    messages = list_messages(service, max_results=10)
+    if not messages:
+        set_sync_status(owner_email, 'completed', db_session)
+        return
+
+    category_map = {cat.name: cat for cat in user_categories}
+
+    for msg_info in messages:
+        msg_id = msg_info['id']
+        existing_email = db_session.exec(select(Email).where(Email.id == msg_id, Email.user_email == owner_email)).first()
+        if existing_email: continue
         
-        service = get_gmail_service(token_data)
-        messages = list_messages(service, max_results=10)
-        if not messages:
-            set_sync_status(owner_email, 'completed', session)
-            return
+        details = get_message_details(service, msg_id)
+        if not details: continue
+        
+        email_body_for_ai = details.get("body") or ""
+        
+        time.sleep(2)
 
-        category_map = {cat.name: cat for cat in user_categories}
+        ai_result = summarize_and_categorize_email(email_body_for_ai, user_categories)
+        if not ai_result: continue
+        
+        chosen_category_name = ai_result.get("category")
+        summary = ai_result.get("summary")
+        category_obj = category_map.get(chosen_category_name)
+        if not category_obj: continue
 
-        for msg_info in messages:
-            msg_id = msg_info['id']
-            existing_email = session.exec(select(Email).where(Email.id == msg_id, Email.user_email == owner_email)).first()
-            if existing_email: continue
-            
-            details = get_message_details(service, msg_id)
-            if not details: continue
-            
-            email_body_for_ai = details.get("body") or ""
-            
-            time.sleep(2)
-
-            ai_result = summarize_and_categorize_email(email_body_for_ai, user_categories)
-            if not ai_result: continue
-            
-            chosen_category_name = ai_result.get("category")
-            summary = ai_result.get("summary")
-            category_obj = category_map.get(chosen_category_name)
-            if not category_obj: continue
-
-            new_email = Email(
-                id=details['id'], user_email=owner_email, summary=summary,
-                category_id=category_obj.id, snippet=details['snippet'],
-                sent_date=details['date'], from_address=details['from'],
-                body=details.get("body") or ""
-            )
-            
-            try:
-                session.add(new_email)
-                session.commit()
-                archive_email(service, msg_id)
-            except IntegrityError:
-                session.rollback()
-                continue
+        new_email = Email(
+            id=details['id'], user_email=owner_email, summary=summary,
+            category_id=category_obj.id, snippet=details['snippet'],
+            sent_date=details['date'], from_address=details['from'],
+            body=details.get("body") or ""
+        )
+        
+        try:
+            db_session.add(new_email)
+            db_session.commit()
+            archive_email(service, msg_id)
+        except IntegrityError:
+            db_session.rollback()
+            continue
 
 def process_emails_task_wrapper(owner_email: str, processing_user_info: dict, token_data: dict):
     with Session(engine) as session:
         try:
-            process_emails_task_logic(owner_email, processing_user_info, token_data)
+            process_emails_task_logic(owner_email, processing_user_info, token_data, db_session=session)
             set_sync_status(owner_email, 'completed', session)
         except ResourceExhausted:
             print(f"Stopping task for {owner_email} due to rate limit.")
